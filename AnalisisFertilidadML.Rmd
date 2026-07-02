@@ -1,0 +1,380 @@
+---
+title: 'Pràctica 1: Model lineal'
+author: "Lucas Poveda Estrada"
+date: "22 de setembre de 2022"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE,eval=T,include=T,message = FALSE,warning=FALSE)
+```
+
+```{r}
+library(car);library(rgl);library(lattice);library(grDevices);
+library(scatterplot3d);library(Hmisc);library(aplpack);library(foreign);library(mnormt);library(ggplot2)
+ls("package:foreign") ## llistat de les funcions de la llibreria 'foreign'
+library(MASS);
+```
+
+```{r}
+airpoll <- source("chap2airpoll.dat")
+class(airpoll) # ´es una llista !
+names(airpoll) # objectes de la llista
+class(airpoll$value) # classe de l'objecte £value de la llista: data.frame
+# ens quedem amb aquest dataframe:
+airpoll <- source("chap2airpoll.dat")$value
+class(airpoll)
+names(airpoll); head(airpoll); summary(airpoll)
+##Mortality # no existeix fora del fitxer airpoll !!
+airpoll$Mortality # ok
+# airpoll['Mortality']; airpoll[,'Mortality']
+attach(airpoll) # Recordeu! attach() baixa les variables del fitxer al workspace
+Mortality # ara s´ı, sense posar el nom del fitxer
+det
+```
+
+```{r}
+op0 <- par(bg="cornsilk")
+n <- 10
+g <- gl(n, 100, n*100)
+x <- rnorm(n*100) + sqrt(as.numeric(g)) ## fins aqu´ı nom´es s'han generat dades
+boxplot(split(x,g), col="lavender", notch=TRUE) ## g ha de ser un factor, x num`erica
+title(main="Notched Boxplots", xlab="Group", font.main=4, font.lab=1)
+par(op0)
+```
+1.1
+a) La funció par permet establir paràmetres gràfics a la funció
+bg estableix el color del background (fons)
+gl() genera levels para factores especificando sus niveles
+	gl(n=5, k=10, length=n*k, labels=)
+		n= el numero de niveles (5 daria 1, 2, 3, 4, 5)
+		k = las veces que se repiten cada uno de los n niveles
+		length = lo largo que será el vector generado
+		labels= permite a través de un vector poner nombre a los factores generados
+
+```{r}
+help(par)
+help(gl)
+g <- gl(n, 100, n*100, labels=c("a","b",3,4,5,6,7,8,9,10))
+```
+b)
+```{r}
+data(mpg)
+op0 <- par(bg="cornsilk")
+g <- as.factor(mpg$drv)
+x <- mpg$displ ## fins aqu´ı nom´es s'han generat dades
+n<-length(x)
+boxplot(split(x,g), col="lavender", notch=TRUE) ## g ha de ser un factor, x num`erica
+title(main="Notched Boxplots", xlab="Group", font.main=4, font.lab=1)
+par(op0)
+```
+c)
+A la grafica veiem que els boxplots dels grups 4 i f es solapen, de la mateixa manera que els grups 4 i r, per tant no podem dir que hi hagi cap diferencia significativa en els valors de displ entre aquests grups
+en canvi, entre els grups f i r hi ha una diferencia significativa estadísticament ja que els boxplots no se solapen. Podem dir que el grup r mostra nivells significativament més alts que els que mostra el grup f
+
+```{r}
+# help(par) # llegiu detingudament tots els arguments per parametritzar un gr`afic !!
+op1 <- par(mfrow=c(2,2), # "mfrow=c(2,2)" 4 figures en 2 files * 2 columnes
+pty="s", cex=.7, # "s": `area quadrada (squared); # "cex": factor mida punt
+pch=20, lwd=1) # "pch" s´ımbol (nº 20) de punt # "lwd" gruix de les l´ınies
+## Simplement, ha obert una `area gr`afica amb les opcions anteriors
+## A l'exemple, es veu la gr`afica que fa despr´es
+par(op1) # tanca la parametritzaci´
+```
+EXEMPLE
+```{r}
+op1 <- par(mfrow=c(2,2), pty="s", cex=.7, pch=20, lwd=1) #definim alguns par`ametres del graf # ?par
+# 1a fig: n´uvol: dispersi´o de mortalitat versus SO2
+attach(airpoll)
+plot(SO2, Mortality ,xlab="SO2",ylab="Mortality")
+title("(a): Dispersi´o ", cex.main=.8)
+# 2a fig: n´uvol + recta de regressi´o + rug-marginals
+plot(SO2, Mortality ,xlab="SO2",ylab="Mortality")
+abline(lm(Mortality~SO2)) # composem dues funcions "abline()" i "lm()"
+rug(SO2,side=1,col=2)
+rug(Mortality,side=2,col=2)
+title("(b): Dispersi´o, rug marginals i recta de regressi´o ", cex.main=.8)
+# 3a fig: dispersi´o vers log-SO2 + "rug marginals"
+plot(log(SO2), Mortality ,xlab="log(SO2)",ylab="Mortality")
+rug(SO2,side=1,col=2)
+rug(Mortality,side=2,col=2)
+title("(c): Dispersi´o i rug-marginals", cex.main=.8)
+# 4a fig: dispersi´o vers log-SO2 + recta + rug marginals
+plot(log(SO2), Mortality ,xlab="log(SO2)",ylab="Mortality")
+abline(lm(Mortality~log(SO2)))
+rug(log(SO2),side=1,col=2)
+rug(Mortality,side=2,col=2)
+title("(d): Dispersi´o, recta de regressi´o i rug-marginals", cex.main=.8)
+par(op1) ## reestableix els par`ametres anteriors
+# plot(log(SO2), Mortality ,xlab="log(SO2)",ylab="Mortality")
+```
+
+2)
+Observem que el logaritme de SO2 fa que els punts del graficses concentrin al costat dret. La funcio logarítmica fa que es mostri el ritme de creixement exponencial i per tant sembla que la funció arribi a un punt on para de creixer.Veiem com l'abline (recta de regressió) redueix la seva pendent. Veiem també que el model lineal s'ajusta més a les dades quan apliquem la funció logaritmica i que per tant, aquesta funció ens permet fer millors models quan tenim dades que creixen de manera exponencial.
+ 
+ 
+```{r}
+# un exemple
+X <- runif(20) # nombres aleatoris amb llei uniforme en 0 i 1
+Xj1 <- jitter(X) # per defecte
+Xj2 <- jitter(X,amount=0.05)
+# fixem a max(X-Xj1); min(X-Xj1) # estimem a en Xj1, ´es infinit`essim
+max(X-Xj2); min(X-Xj2) # estimem a en Xj2, ´es el fixat
+op2 <- par(mfrow=c(1,1), cex=1, lwd=.7,mar=c(3,3,1,1))
+plot(X,Xj1, col="red",ylab="Xj1 i Xj2") # agitaci´o inapreciable
+points(X,Xj2, col="blue",pch=19) # agitaci´o m´es apreciable
+abline(a=0,b=1)
+par(op2)
+## [1] 0.0468774
+## [1] -0.04678826
+
+
+
+noms <- abbreviate(row.names(airpoll)) ## abreuja de manera autom`atica
+plot(log(SO2),log(Mortality),type="n",xlab="log-SO2",ylab="log-mort")
+# "type=n" obre el gr`afic per`o no pinta cap s´ımbol !
+text(log(SO2),log(Mortality),labels=noms,cex=0.7)
+# al punt hi posa l'etiqueta del cas
+abline(lm(log(Mortality)~log(SO2))) #atenci´o!: la funci´o lm() ´es fonamental en models lineals !
+
+
+
+par(fig=c(0,0.75,0.4,1),mar=c(2,2,2,1),oma=c(2,2,2,1)) # redueix marges
+plot(log(Mortality)~log(SO2),cex.axis=.5,cex.lab=.5,cex=.5, main="log(Mortality) vs log(SO2)", cex.main=.6)
+par(fig=c(0,0.75,0,0.4),new=TRUE,mar=c(2,2,2,1),oma=c(2,2,2,1))
+hist(log(SO2),cex.lab=.5,cex.axis=.5, cex.main=.6)
+par(fig=c(0.75,1,0.4,1),new=TRUE,mar=c(2,2,2,1),oma=c(2,2,2,1))
+boxplot(log(Mortality),main="Boxplot of log(Mortality)", cex.main=.6,cex.axis=.5,cex.lab=.5,cex=.5)
+
+
+
+
+marc<-matrix(c(1,1,2,3),nrow=2,byrow=T)
+layout(marc)
+layout.show(3) # veiem la disposici´o del marc
+par(mar=c(2,2,2,1),oma=c(2,2,2,1)) # certa reducci´o de marges
+plot(log(SO2),log(Mortality))
+abline(lm(log(Mortality)~log(SO2)))# afegim recta de regressi´o al plot anterior
+z1 <- rnorm(200); z2 <- rnorm(200) # dues N(0,1) indeps
+plot(z1,z2)
+y1 <- z1+z2; y2 <- z1+3*z2 # dues Gaussianes correlacionades
+plot(y1,y2)
+layout(1) # torna al marc per defecte
+
+
+
+
+layout(1) # nom´es una gr`afica al marc
+noms<-abbreviate(row.names(airpoll))
+plot(log(SO2),log(Mortality),type="n",xlab="log(SO2)",ylab="log(Mortality)")
+# "type=n" situa els punts, per`o s´on invisibles !!!
+text(log(SO2),log(Mortality),labels=noms,lwd=2,cex=0.6)
+# al punt hi posa l'etiqueta del cas
+abline(lm(log(Mortality)~log(SO2)),col="red")
+points(mean(log(SO2)),mean(log(Mortality)),cex=1.5,col="blue",pch=22)
+abline(v=mean(log(SO2)),lty=2,lwd=.7,col="blue") # l´ınia vertical
+abline(h=mean(log(Mortality)),lty=2,lwd=.7,col="blue") # l´ınia horizontal
+text(4,6.68, expression(Model: y==beta[0]+beta[1]*x),col="red")
+
+
+
+
+
+noms<-abbreviate(row.names(airpoll))
+plot(log(SO2),log(Mortality),type="n",xlab="log(SO2)",ylab="log(Mortality)")
+text(log(SO2),log(Mortality),labels=noms,lwd=2,cex=0.6)
+abline(lm(log(Mortality)~log(SO2)),col="red")
+mx <- round(mean(log(SO2)),2)
+my <- round(mean(log(Mortality)),2)
+mod <- lm(log(Mortality)~log(SO2)) # model lineal
+a <- mod$coefficients[1] # intercept
+b <- mod$coefficients[2] # pendent
+text(3.8, 6.68, bquote(bar(x)==.(mx)), cex=0.9, col="red")
+text(4.4, 6.68, bquote(bar(y)==.(my)), cex=0.9, col="red")
+text(4.1, 6.71, bquote(y==.(round(a,2))+.(round(b,2))*x), cex=0.9, col="red")
+
+
+
+
+
+plot(log(SO2),log(Mortality),type="n",xlab="log(SO2)",ylab="log(Mortality)")
+text(log(SO2),log(Mortality),labels=noms,lwd=2,cex=0.5)
+mod <- lm(log(Mortality)~log(SO2)) # model lineal
+a <- mod$coefficients[1] # intercept
+b <- mod$coefficients[2] # pendent
+curve(a+b*x,add=T,col=2,lwd=1.5) # add=T ho superposa al plot anterior
+# a+b*x expressi´o funcional en x # equival a abline(mod) !!
+text(4.1, 6.71, bquote(y==.(round(a,2))+.(round(b,2))*x), cex=0.9, col="red")
+
+
+
+
+library(foreign)
+mon <- read.spss(file="world95.sav",to.data.frame=T)
+names(mon)
+mon$religion <- as.character(mon$religion)
+table(mon$religion)
+mon2 <- subset(mon, !is.na(religion) & !(religion %in% c("Taoist","Tribal","Jewish","Hindu")))
+
+
+coplot(birth_rt ~ lifeexpf | region, ylab="Birth rate", xlab="Life Expectance F", data=mon2)
+
+
+
+library(lattice) # no la torna a carregar, si ja ho est`a
+xyplot(birth_rt ~ lifeexpf, data=mon, groups=region, type ="p", auto.key=list(space="right"))
+
+
+library(lattice)
+nuvol.colors<-function(x,y,fac, nomx="x",nomy="y")
+{
+fac <- as.factor(fac)
+k <- length(levels(fac))
+xyplot(y ~ x, groups=fac, pch=1:k, ## grups de casos
+auto.key=list(border=TRUE, levels(fac),cex=.8),
+par.settings = simpleTheme(pch=16:21),
+scales=list(x=list(relation="same"), y=list(relation='same')),
+xlab=nomx, ylab=nomy)
+}
+# apliquem la funci´o:
+nuvol.colors(x=mon2$lifeexpf,y=mon2$birth_rt,fac=mon2$region,nomx="Life Expectance F.",nomy="Birth rate")
+
+
+library(car)
+scatterplot(birth_rt ~ lifeexpf | region, data=mon2,
+xlab="Esp. Vida Femenina", ylab="Taxa Natalitat",main="scatterplot")
+
+
+# traiem les corbes, mantenim les rectes
+scatterplot(birth_rt ~ lifeexpf | region, data=mon2,
+xlab="Esp. Vida Femenina", ylab="Taxa Natalitat",main="scatterplot" ,smooth=F) # smooth=F, no corba "lowess"
+
+```
+
+3)
+
+Veiem que hi ha una relació lineal negativa entre la natalitat i la regió económica ja que quan la regió economica aumenta la natalitat es redueix.
+En canvi amb l'esèrança de vida femenina pasa el contrari, la relació lineal és positiva ja que quan més gran es fa la regió económica, major esperança de vida femenina hi ha.
+
+
+  Els 4 paísos amb la natalitat més baixa. 
+  
+```{r}
+sub<-subset(mon, mon$country==mon$country, select= c(country ,lifeexpf,birth_rt))
+sub_ord<-sub[order(sub$birth_rt, decreasing = FALSE),]
+sub_ord[1:4,]
+```
+  Els 4 paísos amb la natalitat més alta son:
+```{r}
+sub_ord[(length(sub$country)-3):length(sub$country),]
+```
+
+```{r}
+mon[which.min(mon$birth_rt),]
+```
+
+```{r}
+data(iris) # help(iris)
+pairs(iris[,1:4]) # n´uvol per defecte
+pairs(iris[,1:4],pch=21,bg="green3") # s´ımbol de punt i color
+# definir una funci´o aplicada a tot el panell: la b`asica "points"
+pairs(iris[,1:4],panel=function(x,y){points(x,y,pch=21,bg="darkblue")})
+# panell amb punts i la recta de regressi´o
+pairs(iris[,1:4],panel=function(x,y){points(x,y,pch=21,bg="darkblue");abline(lm(y~x),lwd=2)})
+# variants: cada grafica del panell ´es de contorn de la densitat bivariant
+
+
+
+
+
+class(iris$Species) # factor
+## [1] "factor"
+pairs(iris[, 1:4], pch=19, col = iris$Species, oma=c(3,3,3,15))
+par(xpd = TRUE)
+legend("bottomright", fill = unique(iris$Species), legend = c( levels(iris$Species)))
+scatterplotMatrix( ~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width | Species,
+data=iris, legend = list(coords="bottomright"),
+use = c("pairwise.complete.obs"), # o b´e "complete.obs"
+smooth = FALSE, id = FALSE, regLine = TRUE)
+
+```
+
+
+4)
+```{r}
+coplot(mon2$fertilty ~ mon2$log_gdp | mon2$religion, ylab="Fertilitat", xlab="log-gdp", data=mon2)
+
+xyplot(mon2$fertilty ~ mon2$log_gdp, data=mon2, groups= mon2$religion, type ="p", auto.key=list(space="right"))
+
+scatterplot(mon2$fertilty ~ mon2$log_gdp | mon2$religion, ylab="Fertilitat", xlab="log-gdp",main="scatterplot")
+```
+
+Si veiem les diferents gràfiques observem que les diferents religions presenten diferent nivells de fertilitats. EL que té una mes alta son el Animist mentre que els que menor taxa de fertilitat presenta es el budisme.
+
+La relació que observem entre les dues variables analitzades és una relació lineal negativa, tal que per a un augment nivell de log-gdp la fertilitat es redueix.
+
+
+
+5)
+
+a)
+
+```{r}
+data(mon2)
+scatterplotMatrix(~   mon2$lifeexpf + mon2$birth_rt + mon2$log_gdp
+data=mon2, legend = list(coords="bottomright"),
+use = c("pairwise.complete.obs"), # o b´e "complete.obs"
+smooth = FALSE, id = FALSE, regLine = TRUE)
+```
+
+
+```{r}
+pairs(mon2[,c("lifeexpf","birth_rt","log_gdp")])
+```
+
+b)
+
+```{r}
+mon2$religion <- as.factor(mon2$religion)
+pairs(mon2[,c("lifeexpf","birth_rt","log_gdp")], pch=19, col=mon2$religion, oma=c(3,3,3,15))
+par(xdp=TRUE)
+legend("bottomright", fill= unique(mon2$religion), legend = c(levels(mon2$religion)), title = "Religión")
+```
+
+```{r}
+scatterplotMatrix(~lifeexpf+birth_rt+log_gdp | religion, data=mon2, diagonal=F, legend=list(coords="bottomright"), smooth=F, regline=F, id=F, use = c("pairwise.complete.obs"))
+
+
+
+
+
+
+
+##APUNTS DE CLASSE
+
+
+```{r}
+ord_nat - order(mon2$birth_rt) #no ordena, dona les posicions
+mon2_ord_nat - mon2(ord_nat)#ordeno el fitcher segons les posicions anteriors
+sub - subset(mon2_ord_nat, select=c(1,6,15))
+
+##Explicación del funcionamiento de order
+v - c(5,1,4,2,3)
+ov - order(v)
+v[ov]
+te ordena de la siguiente manera:
+  El 1 (el mas pequeño) se encuentra en la posicion 2. 
+El 5 (el mas grande en la 1)
+la respuesta del order seria:
+  2(posicio del 1), 4 (posició del 2)... 1 (posició del 5)
+```
+
+
+
+
+
+
